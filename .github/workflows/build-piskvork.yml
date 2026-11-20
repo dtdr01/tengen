@@ -1,0 +1,50 @@
+name: Build Piskvork Engine (Single Thread)
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+  workflow_dispatch: # Allows you to trigger the build manually from the Actions tab
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            binary_name: pbrain-tengen
+          - os: windows-latest
+            binary_name: pbrain-tengen.exe
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build single-threaded Piskvork engine
+        run: cargo build --release -p tengen-piskvork
+
+      - name: Verify build (Run Benchmark)
+        run: cargo run --release -p tengen-piskvork -- bench 7
+
+      - name: Upload executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pbrain-tengen-${{ matrix.os }}
+          path: target/release/${{ matrix.binary_name }}
+          retention-days: 30
